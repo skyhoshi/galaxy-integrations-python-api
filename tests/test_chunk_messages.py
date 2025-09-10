@@ -2,8 +2,6 @@ import json
 
 import pytest
 
-from galaxy.unittest.mock import async_return_value
-
 
 @pytest.mark.asyncio
 async def test_chunked_messages(plugin, read):
@@ -16,8 +14,9 @@ async def test_chunked_messages(plugin, read):
     }
 
     message = json.dumps(request).encode() + b"\n"
-    read.side_effect = [async_return_value(message[:5]), async_return_value(message[5:]), async_return_value(b"")]
+    read.side_effect = [message[:5], message[5:], b""]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.install_game.assert_called_with(game_id="3")
 
 
@@ -41,8 +40,9 @@ async def test_joined_messages(plugin, read):
     ]
     data = b"".join([json.dumps(request).encode() + b"\n" for request in requests])
 
-    read.side_effect = [async_return_value(data), async_return_value(b"")]
+    read.side_effect = [data, b""]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.install_game.assert_called_with(game_id="3")
     plugin.launch_game.assert_called_with(game_id="3")
 
@@ -58,6 +58,7 @@ async def test_not_finished(plugin, read):
     }
 
     message = json.dumps(request).encode() # no new line
-    read.side_effect = [async_return_value(message), async_return_value(b"")]
+    read.side_effect = [message, b""]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.install_game.assert_not_called()

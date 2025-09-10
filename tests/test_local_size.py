@@ -1,29 +1,30 @@
 from unittest.mock import call
-
 import pytest
 from galaxy.api.errors import FailedParsingManifest
-from galaxy.unittest.mock import async_return_value
+from galaxy.unittest.mock import delayed_return_value
 
 from tests import create_message, get_messages
+
 
 
 @pytest.mark.asyncio
 async def test_get_local_size_success(plugin, read, write):
     context = {'abc': 'def'}
-    plugin.prepare_local_size_context.return_value = async_return_value(context)
+    plugin.prepare_local_size_context.return_value = context
     request = {
         "jsonrpc": "2.0",
         "id": "11",
         "method": "start_local_size_import",
         "params": {"game_ids": ["777", "13", "42"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_local_size.side_effect = [
-        async_return_value(100000000000, 1),
-        async_return_value(None),
-        async_return_value(3333333)
+        100000000000,
+        None,
+        3333333
     ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_local_size.assert_has_calls([
         call("777", context),
         call("13", context),
@@ -31,12 +32,17 @@ async def test_get_local_size_success(plugin, read, write):
     ])
     plugin.local_size_import_complete.assert_called_once_with()
 
-    assert get_messages(write) == [
-        {
-            "jsonrpc": "2.0",
-            "id": "11",
-            "result": None
-        },
+    messages = get_messages(write)
+    prepare_local_size_context_response = {
+        "jsonrpc": "2.0",
+        "id": "11",
+        "result": None
+    }
+    # response for prepare_local_size_context may be returned before or after
+    # notifications about import success
+    assert prepare_local_size_context_response in messages
+    messages.remove(prepare_local_size_context_response)
+    assert messages == [        
         {
             "jsonrpc": "2.0",
             "method": "local_size_import_success",
@@ -76,16 +82,17 @@ async def test_get_local_size_success(plugin, read, write):
 async def test_get_local_size_error(exception, code, message, internal_type, plugin, read, write):
     game_id = "6"
     request_id = "55"
-    plugin.prepare_local_size_context.return_value = async_return_value(None)
+    plugin.prepare_local_size_context.return_value = None
     request = {
         "jsonrpc": "2.0",
         "id": request_id,
         "method": "start_local_size_import",
         "params": {"game_ids": [game_id]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_local_size.side_effect = exception
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_local_size.assert_called()
     plugin.local_size_import_complete.assert_called_once_with()
 
@@ -132,8 +139,9 @@ async def test_prepare_get_local_size_context_error(plugin, read, write):
         "method": "start_local_size_import",
         "params": {"game_ids": ["6"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -152,8 +160,10 @@ async def test_prepare_get_local_size_context_error(plugin, read, write):
 
 @pytest.mark.asyncio
 async def test_import_already_in_progress_error(plugin, read, write):
-    plugin.prepare_local_size_context.return_value = async_return_value(None)
-    plugin.get_local_size.return_value = async_return_value(100, 5)
+    plugin.prepare_local_size_context.return_value = None
+    print("******", plugin.get_local_size)
+
+    plugin.get_local_size.side_effect = delayed_return_value(100, 5)
     requests = [
         {
             "jsonrpc": "2.0",
@@ -173,12 +183,13 @@ async def test_import_already_in_progress_error(plugin, read, write):
         }
     ]
     read.side_effect = [
-        async_return_value(create_message(requests[0])),
-        async_return_value(create_message(requests[1])),
-        async_return_value(b"", 10)
+        create_message(requests[0]),
+        create_message(requests[1]),
+        b""
     ]
 
     await plugin.run()
+    await plugin.wait_closed()
 
     responses = get_messages(write)
     assert {

@@ -297,7 +297,7 @@ class Connection():
     @staticmethod
     def _parse_message(data):
         try:
-            jsonrpc_message = json.loads(data, encoding="utf-8")
+            jsonrpc_message = json.loads(data)
             if jsonrpc_message.get("jsonrpc") != "2.0":
                 raise InvalidRequest()
             del jsonrpc_message["jsonrpc"]

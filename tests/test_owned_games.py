@@ -3,7 +3,7 @@ import pytest
 from galaxy.api.types import Game, Dlc, LicenseInfo
 from galaxy.api.consts import LicenseType
 from galaxy.api.errors import UnknownError
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 
 from tests import create_message, get_messages
 
@@ -15,9 +15,9 @@ async def test_success(plugin, read, write):
         "id": "3",
         "method": "import_owned_games"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
 
-    plugin.get_owned_games.return_value = async_return_value([
+    plugin.get_owned_games.return_value = [
         Game("3", "Doom", None, LicenseInfo(LicenseType.SinglePurchase, None)),
         Game(
             "5",
@@ -27,8 +27,9 @@ async def test_success(plugin, read, write):
                 Dlc("8", "Temerian Armor Set", LicenseInfo(LicenseType.FreeToPlay, None)),
             ],
             LicenseInfo(LicenseType.SinglePurchase, None))
-    ])
+    ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_owned_games.assert_called_with()
     assert get_messages(write) == [
         {
@@ -80,9 +81,10 @@ async def test_failure(plugin, read, write):
         "method": "import_owned_games"
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_owned_games.side_effect = UnknownError()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_owned_games.assert_called_with()
     assert get_messages(write) == [
         {

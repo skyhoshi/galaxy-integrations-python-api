@@ -3,14 +3,13 @@ from unittest.mock import call
 import pytest
 from galaxy.api.types import GameLibrarySettings
 from galaxy.api.errors import BackendError
-from galaxy.unittest.mock import async_return_value
 
 from tests import create_message, get_messages
 
 
 @pytest.mark.asyncio
 async def test_get_library_settings_success(plugin, read, write):
-    plugin.prepare_game_library_settings_context.return_value = async_return_value("abc")
+    plugin.prepare_game_library_settings_context.return_value = "abc"
     request = {
         "jsonrpc": "2.0",
         "id": "3",
@@ -19,13 +18,14 @@ async def test_get_library_settings_success(plugin, read, write):
             "game_ids": ["3", "5", "7"]
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_game_library_settings.side_effect = [
-        async_return_value(GameLibrarySettings("3", None, True)),
-        async_return_value(GameLibrarySettings("5", [], False)),
-        async_return_value(GameLibrarySettings("7", ["tag1", "tag2", "tag3"], None)),
+        GameLibrarySettings("3", None, True),
+        GameLibrarySettings("5", [], False),
+        GameLibrarySettings("7", ["tag1", "tag2", "tag3"], None),
     ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_game_library_settings.assert_has_calls([
         call("3", "abc"),
         call("5", "abc"),
@@ -84,7 +84,7 @@ async def test_get_library_settings_success(plugin, read, write):
     (KeyError, 0, "Unknown error", "UnknownError")
 ])
 async def test_get_game_library_settings_error(exception, code, message, internal_type, plugin, read, write):
-    plugin.prepare_game_library_settings_context.return_value = async_return_value(None)
+    plugin.prepare_game_library_settings_context.return_value = None
     request = {
         "jsonrpc": "2.0",
         "id": "3",
@@ -93,9 +93,10 @@ async def test_get_game_library_settings_error(exception, code, message, interna
             "game_ids": ["6"]
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_game_library_settings.side_effect = exception
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_game_library_settings.assert_called()
     plugin.game_library_settings_import_complete.assert_called_once_with()
 
@@ -136,8 +137,9 @@ async def test_prepare_get_game_library_settings_context_error(plugin, read, wri
             "game_ids": ["6"]
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
 
     assert get_messages(write) == [
         {
@@ -154,7 +156,7 @@ async def test_prepare_get_game_library_settings_context_error(plugin, read, wri
 
 @pytest.mark.asyncio
 async def test_import_in_progress(plugin, read, write):
-    plugin.prepare_game_library_settings_context.return_value = async_return_value(None)
+    plugin.prepare_game_library_settings_context.return_value = None
     requests = [
         {
             "jsonrpc": "2.0",
@@ -174,12 +176,13 @@ async def test_import_in_progress(plugin, read, write):
         }
     ]
     read.side_effect = [
-        async_return_value(create_message(requests[0])),
-        async_return_value(create_message(requests[1])),
-        async_return_value(b"", 10)
+        create_message(requests[0]),
+        create_message(requests[1]),
+        b""
     ]
 
     await plugin.run()
+    await plugin.wait_closed()
 
     messages = get_messages(write)
     assert {

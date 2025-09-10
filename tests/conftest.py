@@ -1,6 +1,6 @@
 import logging
 from contextlib import ExitStack
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,12 +12,12 @@ from galaxy.unittest.mock import async_return_value
 @pytest.fixture()
 def reader():
     stream = MagicMock(name="stream_reader")
-    stream.read = MagicMock()
+    stream.read = AsyncMock()
     yield stream
 
 
 @pytest.fixture()
-async def writer():
+def writer():
     stream = MagicMock(name="stream_writer")
     stream.drain.side_effect = lambda: async_return_value(None)
     yield stream
@@ -34,7 +34,7 @@ def write(writer):
 
 
 @pytest.fixture()
-async def plugin(reader, writer):
+def plugin(reader, writer):
     """Return plugin instance with all feature methods mocked"""
     methods = (
         "handshake_complete",
@@ -73,13 +73,15 @@ async def plugin(reader, writer):
         "subscription_games_import_complete"
     )
 
+    # Patch the class methods BEFORE creating the instance
     with ExitStack() as stack:
         for method in methods:
             stack.enter_context(patch.object(Plugin, method))
-
-        async with Plugin(Platform.Generic, "0.1", reader, writer, "token") as plugin:
-            plugin.shutdown.return_value = async_return_value(None)
-            yield plugin
+        
+        # Now create the plugin instance
+        plugin = Plugin(Platform.Generic, "0.1", reader, writer, "token")
+        plugin.shutdown.return_value = None
+        yield plugin
 
 
 @pytest.fixture(autouse=True)

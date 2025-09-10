@@ -1,7 +1,5 @@
 import pytest
 
-from galaxy.unittest.mock import async_return_value
-
 from tests import create_message
 
 
@@ -15,6 +13,7 @@ async def test_success(plugin, read):
         }
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.install_game.assert_called_with(game_id="3")

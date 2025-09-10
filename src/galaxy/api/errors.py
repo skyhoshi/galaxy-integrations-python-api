@@ -1,7 +1,7 @@
 from galaxy.api.jsonrpc import ApplicationError, UnknownError
 
-assert UnknownError
 
+assert UnknownError is not None  # UnknownError not used directly in errors.py, but we want to ensure it's defined
 
 class AuthenticationRequired(ApplicationError):
     def __init__(self, message="Authentication required", data=None):

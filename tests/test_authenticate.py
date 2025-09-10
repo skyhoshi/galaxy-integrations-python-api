@@ -13,7 +13,7 @@ from galaxy.api.errors import (
     Banned,
     AccessDenied,
 )
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 
 from tests import create_message, get_messages
 
@@ -25,9 +25,10 @@ async def test_success(plugin, read, write):
         "id": "3",
         "method": "init_authentication"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
-    plugin.authenticate.return_value = async_return_value(Authentication("132", "Zenek"))
+    read.side_effect = [create_message(request), b""]
+    plugin.authenticate.return_value = Authentication("132", "Zenek")
     await plugin.run()
+    await plugin.wait_closed()
     plugin.authenticate.assert_called_with()
 
     assert get_messages(write) == [
@@ -62,9 +63,10 @@ async def test_failure(plugin, read, write, error, code, message, internal_type)
         "method": "init_authentication"
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.authenticate.side_effect = error()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.authenticate.assert_called_with()
 
     assert get_messages(write) == [
@@ -92,9 +94,10 @@ async def test_stored_credentials(plugin, read, write):
             }
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
-    plugin.authenticate.return_value = async_return_value(Authentication("132", "Zenek"))
+    read.side_effect = [create_message(request), b""]
+    plugin.authenticate.return_value = Authentication("132", "Zenek")
     await plugin.run()
+    await plugin.wait_closed()
     plugin.authenticate.assert_called_with(stored_credentials={"token": "ABC"})
     write.assert_called()
 

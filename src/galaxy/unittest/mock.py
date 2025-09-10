@@ -37,3 +37,21 @@ async def async_raise(error, loop_iterations_delay=0):
     if loop_iterations_delay > 0:
         await skip_loop(loop_iterations_delay)
     raise error
+
+
+def delayed_return_value(return_value, loop_iterations_delay=0):
+    async def return_fn(*args, **kwargs):
+        for _ in range(loop_iterations_delay):
+            await asyncio.sleep(0)
+        return return_value
+    return return_fn
+
+
+def delayed_return_value_iterable(return_value, loop_iterations_delay=0):
+    iterable = iter(return_value)
+    async def return_fn(*args, **kwargs):
+        for _ in range(loop_iterations_delay):
+            await asyncio.sleep(0.001)
+        last_value = next(iterable)
+        return last_value
+    return return_fn

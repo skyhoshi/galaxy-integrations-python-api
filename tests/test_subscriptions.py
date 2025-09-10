@@ -3,7 +3,6 @@ import pytest
 from galaxy.api.types import Subscription, SubscriptionGame
 from galaxy.api.consts import SubscriptionDiscovery
 from galaxy.api.errors import FailedParsingManifest, BackendError, UnknownError
-from galaxy.unittest.mock import async_return_value
 
 from tests import create_message, get_messages
 
@@ -14,14 +13,15 @@ async def test_get_subscriptions_success(plugin, read, write):
         "id": "3",
         "method": "import_subscriptions"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
 
-    plugin.get_subscriptions.return_value = async_return_value([
+    plugin.get_subscriptions.return_value = [
         Subscription("1"),
         Subscription("2", False, subscription_discovery=SubscriptionDiscovery.AUTOMATIC),
         Subscription("3", True, 1580899100, SubscriptionDiscovery.USER_ENABLED)
-    ])
+    ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_subscriptions.assert_called_with()
 
     assert get_messages(write) == [
@@ -65,9 +65,10 @@ async def test_get_subscriptions_failure_generic(plugin, read, write, error, cod
         "id": "3",
         "method": "import_subscriptions"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_subscriptions.side_effect = error()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_subscriptions.assert_called_with()
 
     assert get_messages(write) == [
@@ -85,7 +86,7 @@ async def test_get_subscriptions_failure_generic(plugin, read, write, error, cod
 
 @pytest.mark.asyncio
 async def test_get_subscription_games_success(plugin, read, write):
-    plugin.prepare_subscription_games_context.return_value = async_return_value(5)
+    plugin.prepare_subscription_games_context.return_value = 5
     request = {
         "jsonrpc": "2.0",
         "id": "3",
@@ -94,22 +95,28 @@ async def test_get_subscription_games_success(plugin, read, write):
             "subscription_names": ["sub_a"]
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
 
-    async def sub_games():
+    # Create an async generator that yields the games
+    async def mock_subscription_games_generator(subscription_name, context):
         games = [
-        SubscriptionGame(game_title="game A", game_id="game_A"),
-        SubscriptionGame(game_title="game B", game_id="game_B", start_time=1548495632),
-        SubscriptionGame(game_title="game C", game_id="game_C", end_time=1548495633),
-        SubscriptionGame(game_title="game D", game_id="game_D", start_time=1548495632, end_time=1548495633),
-       ]
-        yield [game for game in games]
+            # first chunk of the games
+            [SubscriptionGame(game_title="game A", game_id="game_A"),
+            SubscriptionGame(game_title="game B", game_id="game_B", start_time=1548495632),
+            SubscriptionGame(game_title="game C", game_id="game_C", end_time=1548495633)],
+            # second chunk of the games
+            [SubscriptionGame(game_title="game D", game_id="game_D", start_time=1548495632, end_time=1548495633)],
+        ]
+        for game in games:
+            yield game
+    
+    plugin.get_subscription_games.side_effect = mock_subscription_games_generator
 
-    plugin.get_subscription_games.return_value = sub_games()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.prepare_subscription_games_context.assert_called_with(["sub_a"])
     plugin.get_subscription_games.assert_called_with("sub_a", 5)
-    plugin.subscription_games_import_complete.asert_called_with()
+    plugin.subscription_games_import_complete.assert_called_with()
 
     assert get_messages(write) == [
         {
@@ -137,6 +144,15 @@ async def test_get_subscription_games_success(plugin, read, write):
                         "game_id": "game_C",
                         "end_time": 1548495633
                     },
+                ]
+            }
+        },
+        {
+            "jsonrpc": "2.0",
+            "method": "subscription_games_import_success",
+            "params": {
+                "subscription_name": "sub_a",
+                "subscription_games": [
                     {
                         "game_title": "game D",
                         "game_id": "game_D",
@@ -163,7 +179,7 @@ async def test_get_subscription_games_success(plugin, read, write):
 
 @pytest.mark.asyncio
 async def test_get_subscription_games_success_empty(plugin, read, write):
-    plugin.prepare_subscription_games_context.return_value = async_return_value(5)
+    plugin.prepare_subscription_games_context.return_value = 5
     request = {
         "jsonrpc": "2.0",
         "id": "3",
@@ -172,16 +188,17 @@ async def test_get_subscription_games_success_empty(plugin, read, write):
             "subscription_names": ["sub_a"]
         }
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
 
     async def sub_games():
         yield None
 
     plugin.get_subscription_games.return_value = sub_games()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.prepare_subscription_games_context.assert_called_with(["sub_a"])
     plugin.get_subscription_games.assert_called_with("sub_a", 5)
-    plugin.subscription_games_import_complete.asert_called_with()
+    plugin.subscription_games_import_complete.assert_called_with()
 
     assert get_messages(write) == [
         {
@@ -218,7 +235,7 @@ async def test_get_subscription_games_success_empty(plugin, read, write):
     (KeyError, 0, "Unknown error", "UnknownError")
 ])
 async def test_get_subscription_games_error(exception, code, message, internal_type, plugin, read, write):
-    plugin.prepare_subscription_games_context.return_value = async_return_value(None)
+    plugin.prepare_subscription_games_context.return_value = None
     request = {
         "jsonrpc": "2.0",
         "id": "3",
@@ -228,11 +245,12 @@ async def test_get_subscription_games_error(exception, code, message, internal_t
         }
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_subscription_games.side_effect = exception
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_subscription_games.assert_called()
-    plugin.subscription_games_import_complete.asert_called_with()
+    plugin.subscription_games_import_complete.assert_called_with()
 
     assert get_messages(write) == [
         {
@@ -280,8 +298,9 @@ async def test_prepare_get_subscription_games_context_error(plugin, read, write)
         "method": "start_subscription_games_import",
         "params": {"subscription_names": ["sub_a", "sub_b"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -300,7 +319,7 @@ async def test_prepare_get_subscription_games_context_error(plugin, read, write)
 
 @pytest.mark.asyncio
 async def test_import_already_in_progress_error(plugin, read, write):
-    plugin.prepare_subscription_games_context.return_value = async_return_value(None)
+    plugin.prepare_subscription_games_context.return_value = None
     requests = [
         {
             "jsonrpc": "2.0",
@@ -320,13 +339,13 @@ async def test_import_already_in_progress_error(plugin, read, write):
         }
     ]
     read.side_effect = [
-        async_return_value(create_message(requests[0])),
-        async_return_value(create_message(requests[1])),
-        async_return_value(b"", 10)
+        create_message(requests[0]),
+        create_message(requests[1]),
+        b""
     ]
 
     await plugin.run()
-
+    await plugin.wait_closed()
     responses = get_messages(write)
     assert {
         "jsonrpc": "2.0",

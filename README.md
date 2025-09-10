@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
 ## Deployment
 
-The client has a built-in Python 3.7 interpreter, so integrations are delivered as Python modules.
+The client has a built-in Python 3.13 interpreter, so integrations are delivered as Python modules.
 In order to be found by GOG Galaxy 2.0 an integration folder should be placed in [lookup directory](#deploy-location). Beside all the Python files, the integration folder must contain [manifest.json](#deploy-manifest) and all third-party dependencies. See an [exemplary structure](#deploy-structure-example).
 
 ### Lookup directory
@@ -88,7 +88,7 @@ In order to be found by GOG Galaxy 2.0 an integration folder should be placed in
     `~/Library/Application Support/GOG.com/Galaxy/plugins/installed`
 
 ### Logging
-<a href='https://docs.python.org/3.7/howto/logging.html'>Root logger</a> is already setup by GOG Galaxy to store rotated log files in:
+<a href='https://docs.python.org/3.13/howto/logging.html'>Root logger</a> is already setup by GOG Galaxy to store rotated log files in:
 
 - Windows:
 
@@ -128,9 +128,9 @@ Obligatory JSON file to be placed in an integration folder.
 
 ### Dependencies
 
-All third-party packages (packages not included in the Python 3.7 standard library) should be deployed along with plugin files. Use the following command structure:
+All third-party packages (packages not included in the Python 3.13 standard library) should be deployed along with plugin files. Use the following command structure:
 
-```pip install DEP --target DIR --implementation cp --python-version 37```
+```pip install DEP --target DIR --implementation cp --python-version 313```
 
 For example, a plugin that uses *requests* could have the following structure:
 

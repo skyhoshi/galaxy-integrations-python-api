@@ -1,6 +1,6 @@
 from galaxy.api.types import UserInfo
 from galaxy.api.errors import UnknownError
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 
 import pytest
 
@@ -15,14 +15,15 @@ async def test_get_friends_success(plugin, read, write):
         "method": "import_friends"
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
-    plugin.get_friends.return_value = async_return_value([
+    read.side_effect = [create_message(request), b""]
+    plugin.get_friends.return_value = [
         UserInfo("3", "Jan", "https://avatar.url/u3", None),
         UserInfo("5", "Ola", None, "https://profile.url/u5"),
         UserInfo("6", "Ola2", None),
         UserInfo("7", "Ola3"),
-    ])
+    ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_friends.assert_called_with()
 
     assert get_messages(write) == [
@@ -49,9 +50,10 @@ async def test_get_friends_failure(plugin, read, write):
         "method": "import_friends"
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_friends.side_effect = UnknownError()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_friends.assert_called_with()
 
     assert get_messages(write) == [
@@ -73,6 +75,7 @@ async def test_add_friend(plugin, write):
 
     plugin.add_friend(friend)
     await skip_loop()
+    await plugin.wait_closed()
 
     assert get_messages(write) == [
         {
@@ -94,7 +97,7 @@ async def test_add_friend(plugin, write):
 async def test_remove_friend(plugin, write):
     plugin.remove_friend("5")
     await skip_loop()
-
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -112,7 +115,7 @@ async def test_update_friend_info(plugin, write):
         UserInfo("7", "Jakub", avatar_url="https://new-avatar.url/kuba2.jpg", profile_url="https://profile.url/kuba")
     )
     await skip_loop()
-
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",

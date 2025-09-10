@@ -3,7 +3,6 @@ from unittest.mock import call
 import pytest
 from galaxy.api.consts import OSCompatibility
 from galaxy.api.errors import BackendError
-from galaxy.unittest.mock import async_return_value
 
 from tests import create_message, get_messages
 
@@ -11,20 +10,21 @@ from tests import create_message, get_messages
 @pytest.mark.asyncio
 async def test_get_os_compatibility_success(plugin, read, write):
     context = "abc"
-    plugin.prepare_os_compatibility_context.return_value = async_return_value(context)
+    plugin.prepare_os_compatibility_context.return_value = context
     request = {
         "jsonrpc": "2.0",
         "id": "11",
         "method": "start_os_compatibility_import",
         "params": {"game_ids": ["666", "13", "42"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_os_compatibility.side_effect = [
-        async_return_value(OSCompatibility.Linux),
-        async_return_value(None),
-        async_return_value(OSCompatibility.Windows | OSCompatibility.MacOS),
+        OSCompatibility.Linux,
+        None,
+        OSCompatibility.Windows | OSCompatibility.MacOS,
     ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_os_compatibility.assert_has_calls([
         call("666", context),
         call("13", context),
@@ -78,16 +78,17 @@ async def test_get_os_compatibility_success(plugin, read, write):
 async def test_get_os_compatibility_error(exception, code, message, internal_type, plugin, read, write):
     game_id = "6"
     request_id = "55"
-    plugin.prepare_os_compatibility_context.return_value = async_return_value(None)
+    plugin.prepare_os_compatibility_context.return_value = None
     request = {
         "jsonrpc": "2.0",
         "id": request_id,
         "method": "start_os_compatibility_import",
         "params": {"game_ids": [game_id]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_os_compatibility.side_effect = exception
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_os_compatibility.assert_called()
     plugin.os_compatibility_import_complete.assert_called_once_with()
 
@@ -127,8 +128,9 @@ async def test_prepare_get_os_compatibility_context_error(plugin, read, write):
         "method": "start_os_compatibility_import",
         "params": {"game_ids": ["6"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
 
     assert get_messages(write) == [
         {
@@ -145,7 +147,7 @@ async def test_prepare_get_os_compatibility_context_error(plugin, read, write):
 
 @pytest.mark.asyncio
 async def test_import_already_in_progress_error(plugin, read, write):
-    plugin.prepare_os_compatibility_context.return_value = async_return_value(None)
+    plugin.prepare_os_compatibility_context.return_value = None
     requests = [
         {
             "jsonrpc": "2.0",
@@ -165,12 +167,13 @@ async def test_import_already_in_progress_error(plugin, read, write):
         }
     ]
     read.side_effect = [
-        async_return_value(create_message(requests[0])),
-        async_return_value(create_message(requests[1])),
-        async_return_value(b"", 10)
+        create_message(requests[0]),
+        create_message(requests[1]),
+        b""
     ]
 
     await plugin.run()
+    await plugin.wait_closed()
 
     responses = get_messages(write)
     assert {

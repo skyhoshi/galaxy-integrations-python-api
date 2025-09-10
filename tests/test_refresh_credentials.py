@@ -1,7 +1,6 @@
 import pytest
 import asyncio
 
-from galaxy.unittest.mock import async_return_value
 from tests import create_message, get_messages
 from galaxy.api.errors import (
     BackendNotAvailable, BackendTimeout, BackendError, InvalidCredentials, NetworkError, AccessDenied, UnknownError
@@ -24,7 +23,7 @@ async def test_refresh_credentials_success(plugin, read, write):
         "result": refreshed_credentials
     }
     # 2 loop iterations delay is to force sending response after request has been sent
-    read.side_effect = [async_return_value(create_message(response), loop_iterations_delay=2)]
+    read.side_effect = [create_message(response), b""]
 
     result = await plugin.refresh_credentials({}, False)
     assert get_messages(write) == [
@@ -55,7 +54,7 @@ async def test_refresh_credentials_failure(exception, plugin, read, write):
     }
 
     # 2 loop iterations delay is to force sending response after request has been sent
-    read.side_effect = [async_return_value(create_message(response), loop_iterations_delay=2)]
+    read.side_effect = [create_message(response), b""]
 
     with pytest.raises(JsonRpcError) as e:
         await plugin.refresh_credentials({}, False)

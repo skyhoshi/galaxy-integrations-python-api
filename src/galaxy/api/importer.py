@@ -61,7 +61,7 @@ class Importer:
             context = await self._prepare_context(ids)
             self._task_manager.create_task(
                 self._import_elements(ids, context),
-                "{} import".format(self._name),
+                f"{self._name} import",
                 handle_exceptions=False
             )
         except:
@@ -76,7 +76,7 @@ class CollectionImporter(Importer):
 
     async def _import_element(self, id_, context_):
         try:
-            async for element in self._get(id_, context_):
+            async for element in await self._get(id_, context_):
                 self._notification_success(id_, element)
         except ApplicationError as error:
             self._notification_failure(id_, error)

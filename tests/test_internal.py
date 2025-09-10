@@ -2,7 +2,7 @@ import pytest
 
 from galaxy.api.plugin import Plugin
 from galaxy.api.consts import Platform
-from galaxy.unittest.mock import async_return_value
+from galaxy.unittest.mock import delayed_return_value_iterable
 
 from tests import create_message, get_messages
 
@@ -20,8 +20,9 @@ async def test_get_capabilities(reader, writer, read, write):
     }
     token = "token"
     plugin = PluginImpl(Platform.Generic, "0.1", reader, writer, token)
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -44,7 +45,7 @@ async def test_shutdown(plugin, read, write):
         "id": "5",
         "method": "shutdown"
     }
-    read.side_effect = [async_return_value(create_message(request))]
+    read.side_effect = [create_message(request)]
     await plugin.run()
     await plugin.wait_closed()
     plugin.shutdown.assert_called_with()
@@ -64,8 +65,9 @@ async def test_ping(plugin, read, write):
         "id": "7",
         "method": "ping"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -77,8 +79,9 @@ async def test_ping(plugin, read, write):
 
 @pytest.mark.asyncio
 async def test_tick_before_handshake(plugin, read):
-    read.side_effect = [async_return_value(b"")]
+    read.side_effect = [b""]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.tick.assert_not_called()
 
 
@@ -90,6 +93,7 @@ async def test_tick_after_handshake(plugin, read):
         "method": "initialize_cache",
         "params": {"data": {}}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
+    read.side_effect = delayed_return_value_iterable([create_message(request), b""], 1)
     await plugin.run()
+    await plugin.wait_closed()
     plugin.tick.assert_called_with()

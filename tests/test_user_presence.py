@@ -5,7 +5,7 @@ import pytest
 from galaxy.api.consts import PresenceState
 from galaxy.api.errors import BackendError
 from galaxy.api.types import UserPresence
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 from tests import create_message, get_messages
 
 
@@ -13,52 +13,53 @@ from tests import create_message, get_messages
 async def test_get_user_presence_success(plugin, read, write):
     context = "abc"
     user_id_list = ["666", "13", "42", "69", "22"]
-    plugin.prepare_user_presence_context.return_value = async_return_value(context)
+    plugin.prepare_user_presence_context.return_value = context
     request = {
         "jsonrpc": "2.0",
         "id": "11",
         "method": "start_user_presence_import",
         "params": {"user_id_list": user_id_list}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_user_presence.side_effect = [
-        async_return_value(UserPresence(
+        UserPresence(
             PresenceState.Unknown,
             "game-id1",
             None,
             "unknown state",
             None
-        )),
-        async_return_value(UserPresence(
+        ),
+        UserPresence(
             PresenceState.Offline,
             None,
             None,
             "Going to grandma's house",
             None
-        )),
-        async_return_value(UserPresence(
+        ),
+        UserPresence(
             PresenceState.Online,
             "game-id3",
             "game-title3",
             "Pew pew",
             None
-        )),
-        async_return_value(UserPresence(
+        ),
+        UserPresence(
             PresenceState.Away,
             None,
             "game-title4",
             "AFKKTHXBY",
             None
-        )),
-        async_return_value(UserPresence(
+        ),
+        UserPresence(
             PresenceState.Away,
             None,
             "game-title5",
             None,
             "Playing game-title5: In Menu"
-        )),
+        ),
     ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_user_presence.assert_has_calls([
         call(user_id, context) for user_id in user_id_list
     ])
@@ -146,16 +147,17 @@ async def test_get_user_presence_success(plugin, read, write):
 async def test_get_user_presence_error(exception, code, message, internal_type, plugin, read, write):
     user_id = "69"
     request_id = "55"
-    plugin.prepare_user_presence_context.return_value = async_return_value(None)
+    plugin.prepare_user_presence_context.return_value = None
     request = {
         "jsonrpc": "2.0",
         "id": request_id,
         "method": "start_user_presence_import",
         "params": {"user_id_list": [user_id]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_user_presence.side_effect = exception
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_user_presence.assert_called()
     plugin.user_presence_import_complete.assert_called_once_with()
 
@@ -197,9 +199,9 @@ async def test_prepare_get_user_presence_context_error(plugin, read, write):
         "method": "start_user_presence_import",
         "params": {"user_id_list": ["6"]}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     await plugin.run()
-
+    await plugin.wait_closed()
     assert get_messages(write) == [
         {
             "jsonrpc": "2.0",
@@ -217,7 +219,7 @@ async def test_prepare_get_user_presence_context_error(plugin, read, write):
 
 @pytest.mark.asyncio
 async def test_import_already_in_progress_error(plugin, read, write):
-    plugin.prepare_user_presence_context.return_value = async_return_value(None)
+    plugin.prepare_user_presence_context.return_value = None
     requests = [
         {
             "jsonrpc": "2.0",
@@ -237,13 +239,13 @@ async def test_import_already_in_progress_error(plugin, read, write):
         }
     ]
     read.side_effect = [
-        async_return_value(create_message(requests[0])),
-        async_return_value(create_message(requests[1])),
-        async_return_value(b"", 10)
+        create_message(requests[0]),
+        create_message(requests[1]),
+        b""
     ]
 
     await plugin.run()
-
+    await plugin.wait_closed()
     responses = get_messages(write)
     assert {
         "jsonrpc": "2.0",

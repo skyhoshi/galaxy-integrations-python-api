@@ -3,7 +3,7 @@ import pytest
 from galaxy.api.types import LocalGame
 from galaxy.api.consts import LocalGameState
 from galaxy.api.errors import UnknownError, FailedParsingManifest
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 
 from tests import create_message, get_messages
 
@@ -15,14 +15,15 @@ async def test_success(plugin, read, write):
         "id": "3",
         "method": "import_local_games"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
 
-    plugin.get_local_games.return_value = async_return_value([
+    plugin.get_local_games.return_value = [
         LocalGame("1", LocalGameState.Running),
         LocalGame("2", LocalGameState.Installed),
         LocalGame("3", LocalGameState.Installed | LocalGameState.Running)
-    ])
+    ]
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_local_games.assert_called_with()
 
     assert get_messages(write) == [
@@ -63,9 +64,10 @@ async def test_failure(plugin, read, write, error, code, message, internal_type)
         "id": "3",
         "method": "import_local_games"
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"", 10)]
+    read.side_effect = [create_message(request), b""]
     plugin.get_local_games.side_effect = error()
     await plugin.run()
+    await plugin.wait_closed()
     plugin.get_local_games.assert_called_with()
 
     assert get_messages(write) == [

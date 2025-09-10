@@ -1,6 +1,5 @@
 import pytest
 
-from galaxy.unittest.mock import async_return_value
 
 from tests import create_message
 
@@ -11,7 +10,8 @@ async def test_success(plugin, read):
         "method": "shutdown_platform_client"
     }
 
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
-    plugin.shutdown_platform_client.return_value = async_return_value(None)
+    read.side_effect = [create_message(request), b""]
+    plugin.shutdown_platform_client.return_value = None
     await plugin.run()
+    await plugin.wait_closed()
     plugin.shutdown_platform_client.assert_called_with()

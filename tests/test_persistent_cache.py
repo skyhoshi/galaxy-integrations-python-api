@@ -1,6 +1,6 @@
 import pytest
 
-from galaxy.unittest.mock import async_return_value, skip_loop
+from galaxy.unittest.mock import skip_loop
 
 from tests import create_message, get_messages
 
@@ -42,10 +42,11 @@ async def test_initialize_cache(plugin, read, write, cache_data):
         "method": "initialize_cache",
         "params": {"data": cache_data}
     }
-    read.side_effect = [async_return_value(create_message(request)), async_return_value(b"")]
+    read.side_effect = [create_message(request), b""]
 
     assert {} == plugin.persistent_cache
     await plugin.run()
+    await plugin.wait_closed()
     plugin.handshake_complete.assert_called_once_with()
     assert cache_data == plugin.persistent_cache
     assert_rpc_response(write, response_id=request_id)

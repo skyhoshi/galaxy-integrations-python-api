@@ -299,7 +299,7 @@ class Plugin:
         return self._external_task_manager.create_task(coro, description)
 
     async def _pass_control(self):
-        while self._active:
+        while self._active and self._connection._active:
             try:
                 self.tick()
             except Exception:
