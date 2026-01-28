@@ -1,17 +1,19 @@
-# GOG Galaxy Integrations Python API
+# GOG GALAXY Integrations Python API
 
-This Python library allows developers to easily build community integrations for various gaming platforms with GOG Galaxy 2.0.
+This Python library allows developers to easily build community integrations for various gaming platforms with GOG GALAXY **2.1**.
 
 - refer to our <a href='https://galaxy-integrations-python-api.readthedocs.io'>documentation</a>
 
+Note: For integrations targeting GOG GALAXY the **below 2.1.0 version**, please refer to [this version](https://github.com/gogcom/galaxy-integrations-python-api/tree/0.69).
+
 ## Features
 
-Each integration in GOG Galaxy 2.0 comes as a separate Python script and is launched as a separate process that needs to communicate with the main instance of GOG Galaxy 2.0.
+Each integration in GOG GALAXY 2.1 comes as a separate Python script and is launched as a separate process that needs to communicate with the main instance of GOG GALAXY 2.1.
 
 The provided features are:
 
-- multistep authorization using a browser built into GOG Galaxy 2.0
-- support for GOG Galaxy 2.0 features:
+- multistep authorization using a browser built into GOG GALAXY 2.1
+- support for GOG GALAXY 2.1 features:
   - importing owned and detecting installed games
   - installing and launching games
   - importing achievements and game time
@@ -28,9 +30,11 @@ Each integration can implement only one platform. Each integration must declare 
 
 ## Basic usage
 
-Each integration should inherit from the :class:`~galaxy.api.plugin.Plugin` class. Supported methods like :meth:`~galaxy.api.plugin.Plugin.get_owned_games` should be overwritten - they are called from the GOG Galaxy client at the appropriate times.
-Each of those methods can raise exceptions inherited from the :exc:`~galaxy.api.jsonrpc.ApplicationError`.
-Communication between an integration and the client is also possible with the use of notifications, for example: :meth:`~galaxy.api.plugin.Plugin.update_local_game_status`.
+Each integration should inherit from the `galaxy.api.plugin.Plugin` class. Supported methods like `galaxy.api.plugin.Plugin.get_owned_games` should be overwritten - they are called from the GOG GALAXY client at the appropriate times.
+Each of those methods can raise exceptions inherited from the `galaxy.api.jsonrpc.ApplicationError`.
+Communication between an integration and the client is also possible with the use of notifications, for example: `galaxy.api.plugin.Plugin.update_local_game_status`.
+
+The minimum implementation requires to override `galaxy.api.plugin.Plugin.authenticate` and `galaxy.api.plugin.Plugin.get_owned_games` methods.
 
 ```python
 import sys
@@ -73,7 +77,7 @@ if __name__ == "__main__":
 ## Deployment
 
 The client has a built-in Python 3.13 interpreter, so integrations are delivered as Python modules.
-In order to be found by GOG Galaxy 2.0 an integration folder should be placed in [lookup directory](#deploy-location). Beside all the Python files, the integration folder must contain [manifest.json](#deploy-manifest) and all third-party dependencies. See an [exemplary structure](#deploy-structure-example).
+In order to be found by GOG GALAXY 2.1 an integration folder should be placed in [lookup directory](#deploy-location). Beside all the Python files, the integration folder must contain [manifest.json](#deploy-manifest) and all third-party dependencies. See an [exemplary structure](#deploy-structure-example).
 
 ### Lookup directory
 
@@ -88,7 +92,7 @@ In order to be found by GOG Galaxy 2.0 an integration folder should be placed in
     `~/Library/Application Support/GOG.com/Galaxy/plugins/installed`
 
 ### Logging
-<a href='https://docs.python.org/3.13/howto/logging.html'>Root logger</a> is already setup by GOG Galaxy to store rotated log files in:
+<a href='https://docs.python.org/3.13/howto/logging.html'>Root logger</a> is already setup by GOG GALAXY to store rotated log files in:
 
 - Windows:
 
@@ -149,4 +153,4 @@ installed
 
 ## Legal Notice
 
-By integrating or attempting to integrate any applications or content with or into GOG Galaxy 2.0 you represent that such application or content is your original creation (other than any software made available by GOG) and/or that you have all necessary rights to grant such applicable rights to the relevant community integration to GOG and to GOG Galaxy 2.0 end users for the purpose of use of such community integration and that such community integration comply with any third party license and other requirements including compliance with applicable laws.
+By integrating or attempting to integrate any applications or content with or into GOG GALAXY 2.1 you represent that such application or content is your original creation (other than any software made available by GOG) and/or that you have all necessary rights to grant such applicable rights to the relevant community integration to GOG and to GOG GALAXY 2.1 end users for the purpose of use of such community integration and that such community integration comply with any third party license and other requirements including compliance with applicable laws.
